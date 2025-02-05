@@ -328,6 +328,18 @@ function CORSContent() {
             </ul>
           </CardContent>
         </Card>
+
+        <footer className="text-center text-sm text-gray-500 mt-8 pb-4">
+          Created by{" "}
+          <a
+            href="https://github.com/MrMarciaOng"
+            className="text-blue-600 hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Marcia Ong
+          </a>
+        </footer>
       </main>
     </div>
   );
