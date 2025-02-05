@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer base {
+  :root {
+    /* Soft, cool blue background for light mode */
+    --background: 210 60% 98%;          /* Light, cool blue */
+    --foreground: 210 15% 20%;          /* Dark grayish-blue for text */
+    
+    --card: 210 60% 100%;               /* Very light blue for cards */
+    --card-foreground: 210 15% 20%;
+    
+    /* A vivid primary blue for buttons, links, etc. */
+    --primary: 210 90% 50%;
+    --primary-foreground: 0 0% 100%;    /* White text on a bright blue background */
+
+    /* Secondary, accent, etc. if desired, also with a subtle blue cast */
+    --secondary: 210 30% 95%;
+    --secondary-foreground: 210 15% 20%;
+    --accent: 210 80% 90%;
+    --accent-foreground: 210 15% 20%;
+
+    --border: 210 20% 90%;
+    --input: 210 20% 90%;
+    --ring: 210 60% 40%;
+
+    /* Slightly bigger or smaller radius as you see fit */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Dark mode: deeper blues with lighter foreground text */
+    --background: 210 30% 10%;        
+    --foreground: 210 20% 95%;
+
+    --card: 210 30% 15%;
+    --card-foreground: 210 20% 95%;
+
+    --primary: 210 90% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 20% 20%;
+    --secondary-foreground: 210 20% 95%;
+    --accent: 210 25% 25%;
+    --accent-foreground: 210 20% 95%;
+
+    --border: 210 15% 25%;
+    --input: 210 15% 25%;
+    --ring: 210 60% 50%;
+  }
+
+  /* Make sure body transitions for a smoother effect */
+  body {
+    @apply bg-background text-foreground;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
