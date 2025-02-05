@@ -296,19 +296,6 @@ function CORSContent() {
 
         <Card>
           <CardHeader>
-            <CardTitle>What does this site do?</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>
-              This site allows you to test CORS by making a request to any URL
-              you provide. It will check if the server returns valid CORS
-              headers. This tool is open source and available on GitHub.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
             <CardTitle>Which HTTP method should I use?</CardTitle>
           </CardHeader>
           <CardContent>
@@ -328,7 +315,18 @@ function CORSContent() {
             </ul>
           </CardContent>
         </Card>
-
+        <Card>
+          <CardHeader>
+            <CardTitle>What does this site do?</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>
+              This site allows you to test CORS by making a request to any URL
+              you provide. It will check if the server returns valid CORS
+              headers.
+            </p>
+          </CardContent>
+        </Card>
         <footer className="text-center text-sm text-gray-500 mt-8 pb-4">
           Created by{" "}
           <a
