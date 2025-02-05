@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 import { ChevronDown, ChevronUp, CheckCircle, XCircle } from "lucide-react";
+import Image from "next/image";
 
 export default function CORSTester() {
   const router = useRouter();
@@ -100,7 +101,19 @@ export default function CORSTester() {
   return (
     <div className="container mx-auto px-4 py-8">
       <main className="space-y-8">
-        <h1 className="text-3xl font-bold">CORS Tester</h1>
+        <div className="flex items-center gap-4">
+          <div className="rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-lg">
+            <Image
+              src="/detective-otter.png"
+              alt="Detective Otter Logo"
+              width={80}
+              height={80}
+              priority
+              className="hover:scale-110 transition-transform duration-200"
+            />
+          </div>
+          <h1 className="text-3xl font-bold">CORS Tester</h1>
+        </div>
 
         <Card>
           <CardHeader>
@@ -287,8 +300,8 @@ export default function CORSTester() {
                 checking the preflight request.
               </li>
               <li>
-                <strong>PUT / POST / DELETE / PATCH:</strong> Also available for other testing
-                purposes.
+                <strong>PUT / POST / DELETE / PATCH:</strong> Also available for
+                other testing purposes.
               </li>
             </ul>
           </CardContent>

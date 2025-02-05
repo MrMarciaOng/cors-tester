@@ -24,6 +24,9 @@ export const metadata: Metadata = {
     github: "https://github.com/MrMarciaOng",
     linkedin: "https://www.linkedin.com/in/mrmarciaong/",
   },
+  icons: {
+    icon: "/detective-otter.png",
+  },
 };
 
 export default function RootLayout({
