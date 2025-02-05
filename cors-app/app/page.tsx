@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,17 +24,23 @@ import { InfoIcon } from "lucide-react";
 import { ChevronDown, ChevronUp, CheckCircle, XCircle } from "lucide-react";
 import Image from "next/image";
 
-export default function CORSTester() {
-  const router = useRouter();
+function CORSContent() {
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [url, setUrl] = useState("");
   const [origin, setOrigin] = useState("");
   const [method, setMethod] = useState("GET");
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<{
+    status?: number;
+    statusText?: string;
+    corsHeaders?: Record<string, string | null>;
+    allHeaders?: Record<string, string>;
+    error?: string;
+  } | null>(null);
   const [shareLink, setShareLink] = useState("");
   const [notification, setNotification] = useState("");
   const [isResultExpanded, setIsResultExpanded] = useState(false);
+  const [urlError, setUrlError] = useState("");
 
   useEffect(() => {
     const queryUrl = searchParams?.get("url");
@@ -46,6 +52,11 @@ export default function CORSTester() {
   }, [searchParams]);
 
   const handleTest = async () => {
+    if (!url.trim()) {
+      setUrlError("Please enter a URL to test");
+      return;
+    }
+    setUrlError("");
     setIsLoading(true);
     try {
       const response = await fetch(url, {
@@ -77,8 +88,12 @@ export default function CORSTester() {
         allHeaders: Object.fromEntries(response.headers.entries()),
       });
       generateShareLink();
-    } catch (error) {
-      setResult({ error: "An error occurred while testing CORS" });
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "An error occurred while testing CORS";
+      setResult({ error: errorMessage });
     } finally {
       setIsLoading(false);
     }
@@ -99,8 +114,8 @@ export default function CORSTester() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <main className="space-y-8">
+    <div className="container mx-auto px-4 py-4">
+      <main className="space-y-4">
         <div className="flex items-center gap-4">
           <div className="rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-lg">
             <Image
@@ -128,9 +143,16 @@ export default function CORSTester() {
               <Input
                 id="url"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  setUrlError("");
+                }}
                 placeholder="https://example.com/api"
+                className={urlError ? "border-red-500" : ""}
               />
+              {urlError && (
+                <p className="text-sm text-red-500 mt-1">{urlError}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="origin">Origin header:</Label>
@@ -308,5 +330,13 @@ export default function CORSTester() {
         </Card>
       </main>
     </div>
+  );
+}
+
+export default function CORSTester() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CORSContent />
+    </Suspense>
   );
 }
