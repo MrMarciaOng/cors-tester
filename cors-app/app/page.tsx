@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -23,6 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 import { ChevronDown, ChevronUp, CheckCircle, XCircle } from "lucide-react";
 import Image from "next/image";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function CORSContent() {
   const searchParams = useSearchParams();
@@ -36,19 +37,64 @@ function CORSContent() {
     corsHeaders?: Record<string, string | null>;
     allHeaders?: Record<string, string>;
     error?: string;
+    data?: any;
   } | null>(null);
   const [shareLink, setShareLink] = useState("");
   const [notification, setNotification] = useState("");
   const [isResultExpanded, setIsResultExpanded] = useState(false);
   const [urlError, setUrlError] = useState("");
+  const [headersText, setHeadersText] = useState(
+    '{\n  "Content-Type": "application/json"\n}'
+  );
+  const [headers, setHeaders] = useState<Record<string, string>>({
+    "Content-Type": "application/json",
+  });
+  const [graphqlQuery, setGraphqlQuery] = useState("");
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [activeTab, setActiveTab] = useState("cors");
+  const [rawBody, setRawBody] = useState("");
+  const [bodyType, setBodyType] = useState<"none" | "graphql" | "raw">("none");
 
   useEffect(() => {
     const queryUrl = searchParams?.get("url");
     const queryOrigin = searchParams?.get("origin");
     const queryMethod = searchParams?.get("method");
+    const queryHeaders = searchParams?.get("headers");
+    const queryGraphql = searchParams?.get("graphql");
+    const queryRawBody = searchParams?.get("rawBody");
+    const queryBodyType = searchParams?.get("bodyType");
+
     if (queryUrl) setUrl(queryUrl);
     if (queryOrigin) setOrigin(queryOrigin);
     if (queryMethod) setMethod(queryMethod);
+    if (queryHeaders) {
+      try {
+        const decodedHeaders = JSON.parse(atob(queryHeaders));
+        setHeaders(decodedHeaders);
+        setHeadersText(JSON.stringify(decodedHeaders, null, 2));
+      } catch (e) {
+        console.error("Failed to parse headers from URL");
+      }
+    }
+    if (queryGraphql) {
+      try {
+        setGraphqlQuery(atob(queryGraphql));
+        setBodyType("graphql");
+      } catch (e) {
+        console.error("Failed to parse GraphQL query from URL");
+      }
+    }
+    if (queryRawBody) {
+      try {
+        setRawBody(atob(queryRawBody));
+        setBodyType("raw");
+      } catch (e) {
+        console.error("Failed to parse raw body from URL");
+      }
+    }
+    if (queryBodyType) {
+      setBodyType(queryBodyType as "none" | "graphql" | "raw");
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -65,12 +111,28 @@ function CORSContent() {
     setUrlError("");
     setIsLoading(true);
     try {
-      const response = await fetch(url, {
+      const requestHeaders: Record<string, string> = {
+        Origin: origin || window.location.origin,
+        ...headers,
+      };
+
+      const requestOptions: RequestInit = {
         method,
-        headers: {
-          Origin: origin || window.location.origin,
-        },
-      });
+        headers: requestHeaders,
+      };
+
+      // Handle request body based on type
+      if (method !== "GET" && method !== "HEAD") {
+        if (bodyType === "graphql" && graphqlQuery) {
+          requestOptions.body = JSON.stringify({
+            query: graphqlQuery,
+          });
+        } else if (bodyType === "raw" && rawBody) {
+          requestOptions.body = rawBody;
+        }
+      }
+
+      const response = await fetch(url, requestOptions);
 
       const corsHeaders = {
         "Access-Control-Allow-Origin": response.headers.get(
@@ -87,12 +149,27 @@ function CORSContent() {
         ),
       };
 
+      const responseData = await response.text();
+      let parsedData;
+      try {
+        parsedData = JSON.parse(responseData);
+      } catch {
+        parsedData = responseData;
+      }
+
       setResult({
         status: response.status,
         statusText: response.statusText,
         corsHeaders,
         allHeaders: Object.fromEntries(response.headers.entries()),
+        data: parsedData,
       });
+
+      // Switch to response tab if test is successful and there's valid data
+      if (response.status === 200 && parsedData) {
+        setActiveTab("response");
+      }
+
       generateShareLink();
     } catch (error: unknown) {
       const errorMessage =
@@ -107,8 +184,26 @@ function CORSContent() {
 
   const generateShareLink = () => {
     const baseUrl = window.location.origin;
-    const queryParams = new URLSearchParams({ url, origin, method }).toString();
-    const link = `${baseUrl}?${queryParams}`;
+    const params = new URLSearchParams();
+
+    if (url) params.set("url", url);
+    if (origin) params.set("origin", origin);
+    if (method) params.set("method", method);
+
+    // Encode advanced options if they exist
+    if (Object.keys(headers).length > 0) {
+      params.set("headers", btoa(JSON.stringify(headers)));
+    }
+    if (bodyType !== "none") {
+      params.set("bodyType", bodyType);
+      if (bodyType === "graphql" && graphqlQuery) {
+        params.set("graphql", btoa(graphqlQuery));
+      } else if (bodyType === "raw" && rawBody) {
+        params.set("rawBody", btoa(rawBody));
+      }
+    }
+
+    const link = `${baseUrl}?${params.toString()}`;
     setShareLink(link);
   };
 
@@ -177,13 +272,124 @@ function CORSContent() {
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-slate-950">
                   <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="POST">POST</SelectItem>
                   <SelectItem value="OPTIONS">OPTIONS</SelectItem>
                   <SelectItem value="PUT">PUT</SelectItem>
-                  <SelectItem value="POST">POST</SelectItem>
                   <SelectItem value="PATCH">PATCH</SelectItem>
                   <SelectItem value="DELETE">DELETE</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Advanced Options</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                >
+                  {showAdvancedOptions ? (
+                    <>
+                      <ChevronUp className="h-4 w-4" />
+                      <span className="ml-2">Hide Options</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4" />
+                      <span className="ml-2">Show Options</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {showAdvancedOptions && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="headers">Headers (JSON format):</Label>
+                    <textarea
+                      id="headers"
+                      className="w-full min-h-[100px] p-2 border rounded-md font-mono text-sm"
+                      value={headersText}
+                      onChange={(e) => {
+                        setHeadersText(e.target.value);
+                        try {
+                          const parsed = JSON.parse(e.target.value);
+                          setHeaders(parsed);
+                        } catch {
+                          // Allow invalid JSON while typing
+                        }
+                      }}
+                      placeholder='{
+  "Content-Type": "application/json",
+  "Authorization": "Bearer token",
+  "Custom-Header": "value"
+}'
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Request Body:</Label>
+                    <Select
+                      value={bodyType}
+                      onValueChange={(value: "none" | "graphql" | "raw") =>
+                        setBodyType(value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select body type" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-slate-950">
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="graphql">GraphQL Query</SelectItem>
+                        <SelectItem value="raw">Raw Body</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {bodyType === "graphql" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="graphqlQuery">GraphQL Query:</Label>
+                        <textarea
+                          id="graphqlQuery"
+                          className="w-full min-h-[200px] p-2 border rounded-md font-mono text-sm"
+                          value={graphqlQuery}
+                          onChange={(e) => setGraphqlQuery(e.target.value)}
+                          placeholder={`query MyQuery {
+  getStarredPublicArtifacts(userStars: true) {
+    message
+    valid
+    artifacts {
+      author
+      description
+      id
+    }
+  }
+}`}
+                        />
+                      </div>
+                    )}
+
+                    {bodyType === "raw" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="rawBody">Raw Body:</Label>
+                        <textarea
+                          id="rawBody"
+                          className="w-full min-h-[200px] p-2 border rounded-md font-mono text-sm"
+                          value={rawBody}
+                          onChange={(e) => setRawBody(e.target.value)}
+                          placeholder='{
+  "key": "value",
+  "array": [1, 2, 3],
+  "nested": {
+    "field": "value"
+  }
+}'
+                        />
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
             <Button onClick={handleTest} disabled={isLoading}>
               {isLoading ? (
@@ -219,37 +425,54 @@ function CORSContent() {
 
         {result && (
           <Card>
-            <CardHeader
-              className="cursor-pointer flex flex-row items-center justify-between"
-              onClick={() => setIsResultExpanded(!isResultExpanded)}
-            >
-              <div className="flex items-center gap-2">
+            <CardHeader>
+              <div className="flex items-center justify-between">
                 <CardTitle>Result</CardTitle>
-                {result.status === 200 ? (
-                  <div className="flex items-center gap-1 text-green-500">
-                    <CheckCircle className="h-5 w-5" />
-                    <span className="font-medium">Pass</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 text-red-500">
-                    <XCircle className="h-5 w-5" />
-                    <span className="font-medium">Fail</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {result.status === 200 ? (
+                    <div className="flex items-center gap-1 text-green-500">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-medium">Pass</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 text-red-500">
+                      <XCircle className="h-5 w-5" />
+                      <span className="font-medium">Fail</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              {isResultExpanded ? (
-                <ChevronUp className="h-5 w-5" />
-              ) : (
-                <ChevronDown className="h-5 w-5" />
-              )}
             </CardHeader>
-            {isResultExpanded && (
-              <CardContent>
-                <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded overflow-x-auto">
-                  {JSON.stringify(result, null, 2)}
-                </pre>
-              </CardContent>
-            )}
+            <CardContent>
+              <Tabs
+                defaultValue="cors"
+                value={activeTab}
+                onValueChange={setActiveTab}
+              >
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="cors">CORS Headers</TabsTrigger>
+                  <TabsTrigger value="headers">All Headers</TabsTrigger>
+                  <TabsTrigger value="response">Response</TabsTrigger>
+                </TabsList>
+                <TabsContent value="cors">
+                  <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded overflow-x-auto">
+                    {JSON.stringify(result.corsHeaders, null, 2)}
+                  </pre>
+                </TabsContent>
+                <TabsContent value="headers">
+                  <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded overflow-x-auto">
+                    {JSON.stringify(result.allHeaders, null, 2)}
+                  </pre>
+                </TabsContent>
+                <TabsContent value="response">
+                  <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded overflow-x-auto">
+                    {typeof result.data === "object"
+                      ? JSON.stringify(result.data, null, 2)
+                      : result.data}
+                  </pre>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
           </Card>
         )}
 
