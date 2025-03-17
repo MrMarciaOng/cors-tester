@@ -51,6 +51,12 @@ function CORSContent() {
     if (queryMethod) setMethod(queryMethod);
   }, [searchParams]);
 
+  useEffect(() => {
+    if (url || origin || method) {
+      generateShareLink();
+    }
+  }, [url, origin, method]);
+
   const handleTest = async () => {
     if (!url.trim()) {
       setUrlError("Please enter a URL to test");
